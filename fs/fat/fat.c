@@ -433,6 +433,7 @@ getit:
 
 #ifdef CONFIG_SUPPORT_VFAT
 #ifndef CONFIG_BUGBASE2
+#ifndef CONFIG_PB_BUGBASE
 /*
  * Extract the file name information from 'slotptr' into 'l_name',
  * starting at l_name[*idx].
@@ -461,6 +462,7 @@ slot2str(dir_slot *slotptr, char *l_name, int *idx)
 
 	return 0;
 }
+#endif
 #endif
 
 /* Calculate short name checksum */

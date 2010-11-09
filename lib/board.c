@@ -74,12 +74,14 @@ void start_armboot (void)
 	}
 
 #ifndef CONFIG_BUGBASE2
+#ifndef CONFIG_PB_BUGBASE
 	if (get_mem_type() == GPMC_ONENAND){
         	for (i = ONENAND_START_BLOCK; i < ONENAND_END_BLOCK; i++){
         		if (!onenand_read_block(buf, i))
         			buf += ONENAND_BLOCK_SIZE;
         	}
 	}
+#endif
 #endif
 
 	if (get_mem_type() == GPMC_NAND){

@@ -115,7 +115,8 @@
 #define LOW_LEVEL_SRAM_STACK		0x4020FFFC
 #endif
 
-#if defined(CONFIG_3430SDP) || defined(CONFIG_OMAP3EVM) || defined (CONFIG_BUGBASE2)
+#if defined(CONFIG_3430SDP) || defined(CONFIG_OMAP3EVM) ||\
+		defined (CONFIG_BUGBASE2) || defined (CONFIG_PB_BUGBASE)
 /* FPGA on Debug board.*/
 #define ETH_CONTROL_REG			(DEBUG_BASE+0x30b)
 #define LAN_RESET_REGISTER		(DEBUG_BASE+0x1c)

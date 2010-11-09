@@ -38,6 +38,9 @@
 #define TAP_IDCODE_REG		(OMAP34XX_TAP_BASE+0x204)
 #define PRODUCTION_ID		(OMAP34XX_TAP_BASE+0x208)
 
+/* OMAP 34XX/35XX/36xx/37xx Control ID */
+#define OMAP34XX_CONTROL_ID            (OMAP34XX_WAKEUP_L4_IO_BASE + 0xa204)
+
 /* device type */
 #define DEVICE_MASK		(BIT8|BIT9|BIT10)
 #define TST_DEVICE		0x0

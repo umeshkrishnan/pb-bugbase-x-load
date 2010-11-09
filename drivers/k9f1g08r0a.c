@@ -50,12 +50,15 @@
 #define MT29F1G_ID		0xa1  /* x8, 1GiB */
 #define MT29F2G_ID      	0xba  /* x16, 2GiB */
 
+#ifdef CONFIG_PB_BUGBASE
+#define MT29C4G_ID      	0xbc  /* x16, 2GiB */
+#endif
+
 #else
 
 #define MT29F1G_MFR		0x20  /* ELPIDA */
 #define MT29F1G_ID		0xba  /* x8, 1GiB */
-#define MT29F2G_ID      0xba  /* x16, 2GiB */
-
+#define MT29F2G_ID      	0xba  /* x16, 2GiB */
 #endif
 #define ADDR_COLUMN		1          
 #define ADDR_PAGE		2             
@@ -193,8 +196,14 @@ int nand_chip()
 
 	NAND_DISABLE_CE();
 
-	if (get_cpu_rev() == CPU_3430_ES2)
+	if (get_cpu_rev() == CPU_3430_ES2){
+#ifdef CONFIG_BUGBASE2
 		return (mfr != MT29F1G_MFR || !(id == MT29F1G_ID || id == MT29F2G_ID));
+#endif
+#ifdef CONFIG_PB_BUGBASE
+		return (mfr != MT29F1G_MFR || !(id == MT29F1G_ID || id == MT29F2G_ID || id == MT29C4G_ID));
+#endif
+	}
 	else
 	  	return (mfr != K9F1G08R0A_MFR || id != K9F1G08R0A_ID);
 }

@@ -153,6 +153,10 @@ omap3evm_config :	unconfig
 bug_config :	unconfig
 
 	@./mkconfig $(@:_config=) arm omap3 bug
+
+pb_bug_config :	unconfig
+
+	@./mkconfig $(@:_config=) arm omap3 pb_bug
 #########################################################################
 
 clean:
