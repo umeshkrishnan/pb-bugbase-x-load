@@ -316,10 +316,10 @@ void config_3430sdram_ddr(void)
 	__raw_writel(CMD_AUTOREFRESH, SDRC_MANUAL_0 + SDRC_CS1_OSET);
 	__raw_writel(SDP_SDRC_MR_0_DDR, SDRC_MR_0 + SDRC_CS1_OSET);
 
+#endif
 	/* set up dll */
 	__raw_writel(SDP_SDRC_DLLAB_CTRL, SDRC_DLLA_CTRL);
 	delay(0x2000);	/* give time to lock */
-#endif
 }
 #endif /* CFG_OMAPEVM_DDR */
 
