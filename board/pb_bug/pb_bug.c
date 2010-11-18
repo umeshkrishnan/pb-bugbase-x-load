@@ -1094,7 +1094,7 @@ int mmc_boot(unsigned char *buf)
 
        ret = mmc_init(1);
        if(ret == 0){
-               printf("\n MMC init failed \n");
+               printf("\nMMC init failed \n");
                return 0;
        }
 

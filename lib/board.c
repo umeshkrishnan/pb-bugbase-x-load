@@ -59,6 +59,7 @@ void start_armboot (void)
 {
   	init_fnc_t **init_fnc_ptr;
  	int i;
+	int boot_detect = 0;
 	uchar *buf;
 
    	for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {
@@ -71,6 +72,10 @@ void start_armboot (void)
 
 	if ((get_mem_type() == MMC_ONENAND) || (get_mem_type() == MMC_NAND)){
 		buf += mmc_boot(buf);
+		if (buf == (uchar *)CFG_LOADADDR)
+			boot_detect = 0;
+		else
+			boot_detect = 1;
 	}
 
 #ifndef CONFIG_BUGBASE2
@@ -84,14 +89,14 @@ void start_armboot (void)
 #endif
 #endif
 
-	if (get_mem_type() == GPMC_NAND){
-        	for (i = NAND_UBOOT_START; i < NAND_UBOOT_END; i+= NAND_BLOCK_SIZE){
-        		if (!nand_read_block(buf, i))
-        			buf += NAND_BLOCK_SIZE; /* advance buf ptr */
-        	}
+	if ((get_mem_type() == GPMC_NAND) || (get_mem_type() == MMC_NAND)){
+		if (boot_detect == 0){
+			for (i = NAND_UBOOT_START; i < NAND_UBOOT_END; i+= NAND_BLOCK_SIZE){
+				if (!nand_read_block(buf, i))
+					buf += NAND_BLOCK_SIZE; /* advance buf ptr */
+			}
+		}
 	}
-
-
 
 	if (buf == (uchar *)CFG_LOADADDR)
 		hang();

@@ -74,6 +74,11 @@
 #define ECC_SIZE		24
 #define ECC_STEPS		3
 
+#define __raw_readl(a)    (*(volatile unsigned int *)(a))
+#define __raw_writel(v,a) (*(volatile unsigned int *)(a) = (v))
+#define __raw_readw(a)    (*(volatile unsigned short *)(a))
+#define __raw_writew(v,a) (*(volatile unsigned short *)(a) = (v))
+
 /*******************************************************
  * Routine: delay
  * Description: spinning delay to use before udelay works
@@ -87,6 +92,11 @@ static inline void delay (unsigned long loops)
 
 static int nand_read_page(u_char *buf, ulong page_addr);
 static int nand_read_oob(u_char * buf, ulong page_addr);
+#ifdef CONFIG_PB_BUGBASE
+void omap_set_hwecc(int state);
+static int nand_read_page_intecc(u_char *buf, ulong page_addr);
+void nand_set_intecc(int state);
+#endif
 
 /* JFFS2 large page layout for 3-byte ECC per 256 bytes ECC layout */
 /* This is the only SW ECC supported by u-boot. So to load u-boot 
@@ -167,13 +177,18 @@ static int NanD_Address(unsigned int numbytes, unsigned long ofs)
 	return 0;
 }
 
+#ifdef CONFIG_PB_BUGBASE
+static int mfr, id;
+#endif
 /* read chip mfr and id
  * return 0 if they match board config
  * return 1 if not
  */
 int nand_chip()
 {
+#ifndef CONFIG_PB_BUGBASE
 	int mfr, id;
+#endif
 
  	NAND_ENABLE_CE();
 
@@ -201,6 +216,11 @@ int nand_chip()
 		return (mfr != MT29F1G_MFR || !(id == MT29F1G_ID || id == MT29F2G_ID));
 #endif
 #ifdef CONFIG_PB_BUGBASE
+		/* Disable 1-bit OMAP HW ECC
+		 * Enable 4-bit internal HW ECC
+		 */
+		omap_set_hwecc(0);
+		nand_set_intecc(1);
 		return (mfr != MT29F1G_MFR || !(id == MT29F1G_ID || id == MT29F2G_ID || id == MT29C4G_ID));
 #endif
 	}
@@ -218,7 +238,7 @@ int nand_read_block(unsigned char *buf, ulong block_addr)
 
 #ifdef ECC_CHECK_ENABLE
 	u16 oob_buf[OOB_SIZE >> 1];
- 	
+
 	/* check bad block */
 	/* 0th word in spare area needs be 0xff */
 	if (nand_read_oob((u_char *)oob_buf, block_addr) || (oob_buf[0] & 0xff) != 0xff){
@@ -228,9 +248,16 @@ int nand_read_block(unsigned char *buf, ulong block_addr)
 #endif
 	/* read the block page by page*/
 	for (i=0; i<MAX_NUM_PAGES; i++){
+#ifdef CONFIG_PB_BUGBASE
+		/* Read page using NAND 4-bit Internal HW ECC */
+		if (nand_read_page_intecc(buf+offset, block_addr + offset))
+			return 1;
+		offset += PAGE_SIZE;
+#else
 		if (nand_read_page(buf+offset, block_addr + offset))
 			return 1;
 		offset += PAGE_SIZE;
+#endif
 	}
 
 	return 0;
@@ -331,5 +358,96 @@ static int nand_read_oob(u_char *buf, ulong page_addr)
 
 	return 0;
 }
+#ifdef CONFIG_PB_BUGBASE
+/* Read a page with 4-bit internal NAND HW ECC */
+static int nand_read_page_intecc(u_char *buf, ulong page_addr)
+{
+	int cntr;
+	int len;
+	int status;
+#ifdef NAND_16BIT
+	u16 *p;
+#else
+	u_char *p;
+#endif
+	NAND_ENABLE_CE();
+	NanD_Command(NAND_CMD_READ0);
+	NanD_Address(ADDR_COLUMN_PAGE, page_addr);
+	NanD_Command(NAND_CMD_READSTART);
+	NAND_WAIT_READY();
+
+	/* A delay seems to be helping here. needs more investigation */
+	delay(10000);
+	len = (bus_width == 16) ? PAGE_SIZE >> 1 : PAGE_SIZE;
+	p = (u16 *)buf;
+	for (cntr = 0; cntr < len; cntr++){
+		*p++ = READ_NAND(NAND_ADDR);
+		delay(10);
+	}
+
+	NAND_WAIT_READY();
+	NAND_DISABLE_CE();  /* set pin high */
+
+	/* Read NAND chip status register */
+	NanD_Command(NAND_CMD_STATUS);
+	status = READ_NAND(NAND_ADDR);
+	if (status & 0x01) {
+		printf("Page 0x%08X: Un-correctable error during read! >4-bit error detected.\n", page_addr);
+		for (;;);
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
+ * nand_intecc_set - Enable/Disable NAND internal 4-bit Hardware ECC in new NAND
+ */
+void nand_set_intecc(int state)
+{
+	int i = 0;
+	unsigned char params[4] = { 0x00 };
+
+	if (state) {
+		params[0] = 0x08;
+	}
+
+	NanD_Command(NAND_CMD_SET_FEATURES);
+	NAND_CTL_CLRALE(NAND_ADDR);
+
+	for ( i = 0; i < sizeof(params); i++)
+		WRITE_NAND(params[i], NAND_ADDR);
+
+	/* Give time for feature operation to complete */
+	delay(1);
+}
+
+/*
+ * omap_set_hwecc - Enable/Disable Hardware ECC for NAND flash in GPMC controller
+ *
+ * @state:      1 - Enable HW ECC, 0 - Disable HW ECC
+ *
+ */
+void omap_set_hwecc(int state)
+{
+	unsigned int val = 0x0;
+
+	if (state) {
+		val = __raw_readl(GPMC_BASE + GPMC_ECC_CONFIG);
+		val |= (0x01);
+		__raw_writel(val, GPMC_BASE + GPMC_ECC_CONFIG);
+	} else {
+		/* Disable OMAP HW ECC */
+		/* Clear all ECC | Reg1 (Un-set) */
+		val |= (0x00000001 << 8);
+		__raw_writel(val, GPMC_BASE + GPMC_ECC_CONTROL);
+
+		val = __raw_readl(GPMC_BASE + GPMC_ECC_CONFIG);
+		val &= ~(0x01);
+		__raw_writel(val, GPMC_BASE + GPMC_ECC_CONFIG);
+	}
+}
+
+#endif
 
 #endif

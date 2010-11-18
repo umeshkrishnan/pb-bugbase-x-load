@@ -77,6 +77,11 @@ void 	udelay (unsigned long usec);
 #define NAND_CMD_READID		0x90
 #define NAND_CMD_RESET		0xff
 
+#ifdef CONFIG_PB_BUGBASE
+#define NAND_CMD_SET_FEATURES   0xEF
+#define NAND_CMD_GET_FEATURES   0xEE
+#endif
+
 /* Extended Commands for Large page devices */
 #define NAND_CMD_READSTART	0x30
 
